@@ -19,7 +19,7 @@ struct client_t
 
 void *readThread(void *arg);
 
-//ADAPTAME PARA RECIBIR MÁS CLIENTES
+//ADÁPTAME PARA RECIBIR MÁS CLIENTES
 int main(int argc, char *argv[])
 {
 
