@@ -130,7 +130,7 @@ void *readThread(void *arg)
 
     while ((numOfBytes = recv(client.socket, message_from_client, BUF_SIZE, 0)) > 0)
     {
-        printf("from client: %s\n", message_from_client);
+        printf("from client %d: %s\n", client.socket, message_from_client);
 
         char * command = strtok(message_from_client, " ");
 
