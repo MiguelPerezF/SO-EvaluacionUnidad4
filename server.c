@@ -5,11 +5,13 @@
 #include <stdlib.h>
 #include <pthread.h>
 #include <sys/socket.h>
-#include <netinet/in.h>
+//#include <netinet/in.h>
+#include<arpa/inet.h>
 #include <signal.h>
+#include<string.h>
 
 #define PORT 6666
-#define BUF_SIZE 128
+#define BUF_SIZE 1000
 
 struct client_t
 {
@@ -18,6 +20,10 @@ struct client_t
 };
 
 void *readThread(void *arg);
+void *serverCommandsThread(void *arg);
+void removeEventsFromClient();
+
+static char *events[10];
 
 //ADÁPTAME PARA RECIBIR MÁS CLIENTES
 int main(int argc, char *argv[])
@@ -27,7 +33,8 @@ int main(int argc, char *argv[])
     int status;
     int enable = 1;
     int server_sd;
-    int client_sd;
+    int client_sd, *new_client;
+    int size;
     pthread_t rxThreadId;
     struct client_t client;
 
@@ -69,7 +76,7 @@ int main(int argc, char *argv[])
 
     // 5. Set backlog
 
-    status = listen(server_sd, 1);
+    status = listen(server_sd, 3);
 
     if (-1 == status)
     {
@@ -80,11 +87,13 @@ int main(int argc, char *argv[])
 
     printf("Server listening\n");
 
-    while (1)
+    // 6. Accept:
+    printf("Waiting for a client\n");
+    size = sizeof(struct sockaddr_in);
+    status = pthread_create(&rxThreadId, NULL, &serverCommandsThread, &server_sd);
+
+    while ((client_sd = accept(server_sd, (struct sockaddr *)&addr, (socklen_t*)&size)))
     {
-        // 6. Accept:
-        printf("Waiting for a client\n");
-        client_sd = accept(server_sd, NULL, NULL);
 
         printf("Client connected\n");
         if (-1 == client_sd)
@@ -94,6 +103,8 @@ int main(int argc, char *argv[])
             exit(EXIT_FAILURE);
         }
         // 7. Create a thread for receiving messages from client
+        new_client = malloc(1);
+        *new_client = client_sd;
         client.socket = client_sd;
         client.rxState = 1;
 
@@ -106,30 +117,6 @@ int main(int argc, char *argv[])
             exit(EXIT_FAILURE);
         }
 
-        while (1)
-        {
-            if (0 == client.rxState)
-            {
-                printf("Client closed the socket\n");
-                break;
-            }
-
-            if (fgets(buf, BUF_SIZE, stdin) == NULL)
-            {
-                printf("Fgets NULL\n");
-            }
-
-            if (buf[strlen(buf) - 1] == '\n')
-                buf[strlen(buf) - 1] = 0;
-
-            status = write(client.socket, buf, strlen(buf) + 1);
-            if (-1 == status)
-            {
-                perror("Server write to client fails: ");
-                break;
-            }
-        }
-        close(client.socket);
     }
 
     exit(EXIT_SUCCESS);
@@ -137,29 +124,137 @@ int main(int argc, char *argv[])
 
 void *readThread(void *arg)
 {
-    struct client_t *client = ((struct client_t *)arg);
+    struct client_t client = *((struct client_t *)arg);
     ssize_t numOfBytes;
-    char buf[BUF_SIZE];
+    char message_from_client[2000];
+
+    while ((numOfBytes = recv(client.socket, message_from_client, BUF_SIZE, 0)) > 0)
+    {
+        printf("from client: %s\n", message_from_client);
+
+        char * command = strtok(message_from_client, " ");
+
+        if(strcmp(command, "sub") == 0)
+        {
+            char * event_name = strtok(NULL, " ");
+            printf("Subscribe to an event: %s.\n", event_name);
+        }
+        if(strcmp(command, "unsub") == 0)
+        {
+            char * event_name = strtok(NULL, " ");
+            printf("Unsubscribe from an event: %s.\n", event_name);
+        }
+        if(strcmp(command, "list") == 0)
+        {
+            printf("Listing all events client is subscribed to.\n");
+        }
+        if(strcmp(command, "ask") == 0)
+        {
+            printf("Listing all available events.\n");
+        }
+        if(strcmp(command, "save") == 0)
+        {
+            char * file_name = strtok(NULL, " ");
+            printf("Saving file: %s\n", file_name);
+        }
+        if(strcmp(command, "load") == 0)
+        {
+            char * file_name = strtok(NULL, " ");
+            printf("Loading file: %s\n", file_name);
+        }
+    }
+
+    if (0 == numOfBytes)
+    {
+        printf("client closed the socket end\n");
+        removeEventsFromClient();
+    }
+    else if (-1 == numOfBytes)
+    {
+        perror("ReadThread read() fails: ");
+        removeEventsFromClient();
+    }
+
+    printf("Terminate Pthread for reading\n");
+    client.rxState = 0;
+    close(client.socket);
+    return 0;
+}
+
+// Método que recibe los comandos del servidor
+void *serverCommandsThread(void *arg)
+{
+    int server_sd = ((int)arg);
+    char input[BUF_SIZE];
+
 
     while (1)
     {
-        numOfBytes = read(client->socket, buf, BUF_SIZE);
-        if (0 == numOfBytes)
+
+        if (fgets(input, BUF_SIZE, stdin) == NULL)
         {
-            printf("client closed the socket end\n");
-            break;
+            printf("Fgets NULL\n");
         }
-        else if (-1 == numOfBytes)
+
+        if (input[strlen(input) - 1] == '\n')
+            input[strlen(input) - 1] = 0;
+     
+        char * command = strtok(input, " ");
+
+        if((strcmp(command, "exit")) == 0)
         {
-            perror("ReadThread read() fails: ");
-            break;
+            printf("Terminating server.\n");
         }
-        else
+        if(strcmp(command, "add") == 0)
         {
-            printf("from client: %s\n", buf);
+            char * event_name = strtok(NULL, " ");
+            for (int i = 0; i < 10; i++) {
+                if(events[i] == NULL)
+                {
+                    printf("Adding event: %s.\n", event_name);
+                    events[i] = event_name;
+                    printf("Events: %s.\n", events[i]);
+                    break;
+                }
+            }
         }
+        if(strcmp(command, "remove") == 0)
+        {
+            char * event_name = strtok(NULL, " ");
+            printf("Removing event: %s.\n", event_name);
+        }
+        if(strcmp(command, "trigger") == 0)
+        {
+            char * event_name = strtok(NULL, " ");
+            printf("Triggering event: %s.\n", event_name);
+        }
+        if(strcmp(command, "list") == 0)
+        {
+            char * event_name = strtok(NULL, " ");
+            printf("Listing clients in event: %s.\n", event_name);
+        }
+        if(strcmp(command, "all") == 0)
+        {
+            printf("All events and clients.\n");
+        }
+        if(strcmp(command, "save") == 0)
+        {
+            char * file_name = strtok(NULL, " ");
+            printf("Saving file: %s\n", file_name);
+        }
+        if(strcmp(command, "load") == 0)
+        {
+            char * file_name = strtok(NULL, " ");
+            printf("Loading file: %s\n", file_name);
+        }
+
     }
-    printf("Terminate Pthread for reading\n");
-    client->rxState = 0;
-    return NULL;
+    close(server_sd);
+    return 0;
+}
+
+//Método que retira el cliente que se desconectó de todos los eventos subscritos
+void removeEventsFromClient()
+{
+    printf("Removing events from client");
 }
