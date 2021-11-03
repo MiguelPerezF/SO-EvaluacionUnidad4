@@ -29,7 +29,7 @@ static char *events[10];
 int main(int argc, char *argv[])
 {
 
-    char buf[BUF_SIZE];
+    //char buf[BUF_SIZE];
     int status;
     int enable = 1;
     int server_sd;
@@ -184,7 +184,7 @@ void *readThread(void *arg)
 // Método que recibe los comandos del servidor
 void *serverCommandsThread(void *arg)
 {
-    int server_sd = ((int)arg);
+    int server_sd = atoi(arg);
     char input[BUF_SIZE];
 
 
