@@ -206,10 +206,13 @@ void *serverCommandsThread(void *arg)
 
         char *command = strtok(input, " ");
 
+        //comando exit
         if ((strcmp(command, "exit")) == 0)
         {
             printf("Terminating server.\n");
         }
+
+        //comando add
         if (strcmp(command, "add") == 0)
         {
             char *event_name = strdup(strtok(NULL, " "));
@@ -222,12 +225,21 @@ void *serverCommandsThread(void *arg)
                 if (arrevents[i].event_name == NULL)
                 {
                     arrevents[i] = e;
+                    int initEvents[20] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+                    *arrevents[i].subs = initEvents;
+                    /*for (int i = 0; i < 20; i++)
+                    {
+                        e.subs[i] = -1; 
+                    }*/
+
                     printf("Adding event: %s.\n", event_name);
                     printf("Events[%d]: %s.\n", i, arrevents[i].event_name);
                     break;
                 }
             }
         }
+
+        //comando remove
         if (strcmp(command, "remove") == 0)
         {
             int rmvexist = 0, pos = 0;
@@ -276,11 +288,15 @@ void *serverCommandsThread(void *arg)
                 printf("El evento %s no existe.\n", event_name);
             }
         }
+
+        //comando trigger
         if (strcmp(command, "trigger") == 0)
         {
             char *event_name = strtok(NULL, " ");
             printf("Triggering event: %s.\n", event_name);
         }
+
+        //comando list: lista los suscriptores del evento enviado por consola
         if (strcmp(command, "list") == 0)
         {
             char *event_name = strtok(NULL, " ");
@@ -288,24 +304,37 @@ void *serverCommandsThread(void *arg)
             {
                 if (strcmp(arrevents[i].event_name, event_name) == 0)
                 {
-                    printf("Listing clients in event %s:\n", arrevents->event_name);
-                    for (int j = 0; j < 20; i++) //iterates number of subs
+                    if (arrevents[i].event_name != NULL)
                     {
-                        if (arrevents[i].subs[0] != NULL)
+                        printf("Listing clients in event %s:\n", arrevents[i].event_name);
+                        for (int j = 0; j < 20; i++) //iterates number of subs
                         {
-                            printf("Sub: %ls\n", arrevents[i].subs[j]); //,arrevents->subs[i]
+                            printf("Sub[%d]: %ls", j, arrevents[i].subs[j]); //
+                            printf("\n");
+
+                            if (arrevents[i].subs[0] == NULL)
+                            {
+                                //printf("El evento %s no tiene suscriptores.\n", event_name);
+                                //break;
+                            }
+                            else
+                            {
+                                //printf("Sub: %ls", arrevents[i].subs[j]); //,arrevents->subs[i]
+                                //printf("\n");
+                            }
                         }
-                        else
-                        {
-                            printf("El evento %s no tiene suscriptores.\n", event_name);
-                        }
+                        break;
                     }
-                    break;
+                    else
+                    {
+                        printf("evento no existe");
+                    }
                 }
-                else
+                /*else
                 {
                     printf("El evento %s no existe\n", event_name);
-                }
+                    break;
+                }*/
             }
         }
 
@@ -316,33 +345,35 @@ void *serverCommandsThread(void *arg)
                 printf("Event %d: %s\n", i, arrevents[i].event_name);
             }
         }
-        if (strcmp(command, "all") == 0)
-        {
-            printf("All events and clients.\n");
-            for (int i = 0; i < 20; i++)
+        if (strcmp(command, "load") == 0)
+            if (strcmp(command, "all") == 0)
             {
-                if (arrevents[i].event_name != NULL)
+                printf("All events and clients.\n");
+                for (int i = 0; i < 20; i++)
                 {
-                    printf("Evento %s\n", arrevents[i].event_name);
-                    if (arrevents[i].subs[0] != NULL)
+                    if (arrevents[i].event_name != NULL)
                     {
-                        for (int j = 1; j <= 20; i++)
+                        printf("Evento %s\n", arrevents[i].event_name);
+                        if (arrevents[i].subs[0] != NULL)
                         {
-                            printf("Sub %d: cliente con ID %ls", j, arrevents[i].subs[j]);
+                            printf("justo antes de iterar en subs");
+                            for (int j = 1; j <= 20; i++)
+                            {
+                                printf("Sub %d: cliente con ID %ls", j, arrevents[i].subs[j]);
+                            }
+                        }
+                        else
+                        {
+                            printf("Este evento no tiene suscriptores \n");
                         }
                     }
                     else
                     {
-                        printf("Este evento no tiene suscriptores \n");
+                        printf("No hay más eventos\n");
+                        break;
                     }
                 }
-                else
-                {
-                    printf("No hay más eventos\n");
-                    break;
-                }
             }
-        }
         if (strcmp(command, "save") == 0)
         {
             char *file_name = strtok(NULL, " ");
@@ -350,7 +381,7 @@ void *serverCommandsThread(void *arg)
             if (fout == NULL)
             {
                 perror("Falla en la apertura del archivo de salida: ");
-                return (EXIT_FAILURE);
+                EXIT_FAILURE;
             }
             printf("Archivo abierto, guardando...\n");
             for (int i = 0; i < 20; i++)
@@ -358,8 +389,8 @@ void *serverCommandsThread(void *arg)
                 if (arrevents[i].event_name != NULL)
                 {
                     printf("Escribiré %s\n", arrevents[i].event_name);
-                    fprintf(fout, "%s", arrevents[i].event_name);
-                    fprintf(fout, "\n");
+                    fputs(arrevents[i].event_name, fout);
+                    fputs("\n", fout);
                 }
                 else
                 {
@@ -367,6 +398,7 @@ void *serverCommandsThread(void *arg)
                 }
             }
             //printf("Eventos guardados en el archivo con éxito\n");
+            fclose(fout);
         }
         if (strcmp(command, "load") == 0)
         {
@@ -375,7 +407,7 @@ void *serverCommandsThread(void *arg)
             if (fin == NULL)
             {
                 perror("Falla en la apertura del archivo de entrada: ");
-                return (EXIT_FAILURE);
+                EXIT_FAILURE;
             }
             char buff[64];
             char *status = NULL;
@@ -383,7 +415,7 @@ void *serverCommandsThread(void *arg)
             status = fgets(buff, sizeof(buff), fin);
             if (status != NULL)
             {
-                char *event = strtok(buff, ""); //strtok es para partir una cadena de caracteres en subcadenas indicando el separador
+                //char *event = strtok(buff, ""); //strtok es para partir una cadena de caracteres en subcadenas indicando el separador
                 //agregar el evento
             }
             printf("Loading file: %s\n", file_name);
