@@ -6,9 +6,9 @@
 #include <pthread.h>
 #include <sys/socket.h>
 //#include <netinet/in.h>
-#include<arpa/inet.h>
+#include <arpa/inet.h>
 #include <signal.h>
-#include<string.h>
+#include <string.h>
 
 #define PORT 6666
 #define BUF_SIZE 1000
@@ -18,17 +18,22 @@ struct client_t
     int socket;
     int rxState;
 };
+struct event_t
+{
+    char *event_name;
+    int *subs[20];
+};
 
 void *readThread(void *arg);
 void *serverCommandsThread(void *arg);
 void removeEventsFromClient();
+void subscribeClient();
 
-static char *events[10];
+//static struct client_t *clients[10];
 
 //ADÁPTAME PARA RECIBIR MÁS CLIENTES
 int main(int argc, char *argv[])
 {
-
     //char buf[BUF_SIZE];
     int status;
     int enable = 1;
@@ -92,7 +97,7 @@ int main(int argc, char *argv[])
     size = sizeof(struct sockaddr_in);
     status = pthread_create(&rxThreadId, NULL, &serverCommandsThread, &server_sd);
 
-    while ((client_sd = accept(server_sd, (struct sockaddr *)&addr, (socklen_t*)&size)))
+    while ((client_sd = accept(server_sd, (struct sockaddr *)&addr, (socklen_t *)&size)))
     {
 
         printf("Client connected\n");
@@ -116,7 +121,6 @@ int main(int argc, char *argv[])
             close(server_sd);
             exit(EXIT_FAILURE);
         }
-
     }
 
     exit(EXIT_SUCCESS);
@@ -132,34 +136,35 @@ void *readThread(void *arg)
     {
         printf("from client %d: %s\n", client.socket, message_from_client);
 
-        char * command = strtok(message_from_client, " ");
+        char *command = strtok(message_from_client, " ");
 
-        if(strcmp(command, "sub") == 0)
+        if (strcmp(command, "sub") == 0)
         {
-            char * event_name = strtok(NULL, " ");
-            printf("Subscribe to an event: %s.\n", event_name);
+            char *event_name = strtok(NULL, " ");
+            subscribeClient(client.socket, event_name);
+            printf("Subscribing client %d to the event: %s.\n", client.socket, event_name);
         }
-        if(strcmp(command, "unsub") == 0)
+        if (strcmp(command, "unsub") == 0)
         {
-            char * event_name = strtok(NULL, " ");
-            printf("Unsubscribe from an event: %s.\n", event_name);
+            char *event_name = strtok(NULL, " ");
+            printf("Unsubscribing client %d from the event: %s.\n", client.socket, event_name);
         }
-        if(strcmp(command, "list") == 0)
+        if (strcmp(command, "list") == 0)
         {
             printf("Listing all events client is subscribed to.\n");
         }
-        if(strcmp(command, "ask") == 0)
+        if (strcmp(command, "ask") == 0)
         {
             printf("Listing all available events.\n");
         }
-        if(strcmp(command, "save") == 0)
+        if (strcmp(command, "save") == 0)
         {
-            char * file_name = strtok(NULL, " ");
+            char *file_name = strtok(NULL, " ");
             printf("Saving file: %s\n", file_name);
         }
-        if(strcmp(command, "load") == 0)
+        if (strcmp(command, "load") == 0)
         {
-            char * file_name = strtok(NULL, " ");
+            char *file_name = strtok(NULL, " ");
             printf("Loading file: %s\n", file_name);
         }
     }
@@ -184,9 +189,9 @@ void *readThread(void *arg)
 // Método que recibe los comandos del servidor
 void *serverCommandsThread(void *arg)
 {
+    struct event_t *arrevents = malloc(sizeof(struct event_t) * (20));
     int server_sd = atoi(arg);
     char input[BUF_SIZE];
-
 
     while (1)
     {
@@ -198,63 +203,170 @@ void *serverCommandsThread(void *arg)
 
         if (input[strlen(input) - 1] == '\n')
             input[strlen(input) - 1] = 0;
-     
-        char * command = strtok(input, " ");
 
-        if((strcmp(command, "exit")) == 0)
+        char *command = strtok(input, " ");
+
+        if ((strcmp(command, "exit")) == 0)
         {
             printf("Terminating server.\n");
         }
-        if(strcmp(command, "add") == 0)
+        if (strcmp(command, "add") == 0)
         {
-            char * event_name = strtok(NULL, " ");
-            for (int i = 0; i < 10; i++) {
-                if(events[i] == NULL)
+            char *event_name = strdup(strtok(NULL, " "));
+            struct event_t e;
+            e.event_name = event_name;
+            //printf("event name: %s", e.event_name);
+
+            for (int i = 0; i < 20; i++)
+            {
+                if (arrevents[i].event_name == NULL)
                 {
+                    arrevents[i] = e;
                     printf("Adding event: %s.\n", event_name);
-                    events[i] = event_name;
-                    printf("Events: %s.\n", events[i]);
+                    printf("Events[%d]: %s.\n", i, arrevents[i].event_name);
                     break;
                 }
             }
         }
-        if(strcmp(command, "remove") == 0)
+        if (strcmp(command, "remove") == 0)
         {
-            char * event_name = strtok(NULL, " ");
+            int rmvexist = 0, pos = 0;
+            char *event_name = strtok(NULL, " ");
             printf("Removing event: %s.\n", event_name);
+            for (int i = 0; i < 20; i++)
+            {
+                if (arrevents[i].event_name != NULL)
+                {
+                    if (strcmp(arrevents[i].event_name, event_name) == 0)
+                    {
+                        rmvexist = 1; //Flag indicating the event exist
+                        pos = i;
+                        break;
+                    }
+                }
+            }
+            if (rmvexist == 1) //If the event was found
+            {
+                int controlprint = 0; //Controls the times tah confirmation prints
+                for (int i = pos; i < 20; i++)
+                {
+                    if (arrevents[i+1].event_name != NULL)
+                    {
+                        controlprint++;
+                        strcpy(arrevents[i].event_name, arrevents[i+1].event_name);
+                        if (controlprint == 1)
+                        {
+                            printf("Evento %s eliminado con exito\n", event_name);
+                        }
+                    }
+                    else //The last event added
+                    {
+                        arrevents[i].event_name = NULL;
+                        arrevents[i].subs[i] = NULL;
+                        if (controlprint == 0)
+                        {
+                            printf("Evento %s eliminado con exito\n", event_name);
+                        }
+                        break; 
+                    }
+                }
+            }
+            if (rmvexist == 0) //If the event was not found
+            {
+                printf("El evento %s no existe.\n", event_name);
+                
+            }
         }
-        if(strcmp(command, "trigger") == 0)
+        if (strcmp(command, "trigger") == 0)
         {
-            char * event_name = strtok(NULL, " ");
+            char *event_name = strtok(NULL, " ");
             printf("Triggering event: %s.\n", event_name);
         }
-        if(strcmp(command, "list") == 0)
+        if (strcmp(command, "list") == 0)
         {
-            char * event_name = strtok(NULL, " ");
-            printf("Listing clients in event: %s.\n", event_name);
-        }
-        if(strcmp(command, "all") == 0)
-        {
-            printf("All events and clients.\n");
-        }
-        if(strcmp(command, "save") == 0)
-        {
-            char * file_name = strtok(NULL, " ");
-            printf("Saving file: %s\n", file_name);
-        }
-        if(strcmp(command, "load") == 0)
-        {
-            char * file_name = strtok(NULL, " ");
-            printf("Loading file: %s\n", file_name);
+            char *event_name = strtok(NULL, " ");
+            for (int i = 0; i < 10; i++)
+            {
+                if (strcmp(arrevents[i].event_name, event_name) == 0)
+                {
+                    printf("Listing clients in event %s:\n", arrevents->event_name);
+                    for (int i = 0; i < 100; i++)
+                    {
+                        printf("Client: %ls", arrevents->subs[i]);
+                    }
+                }
+            }
         }
 
+        if (strcmp(command, "show") == 0)
+        {
+            for (int i = 0; i < 10; i++)
+            {
+                printf("Event %d: %s\n", i, arrevents[i].event_name);
+            }
+        }
+        if (strcmp(command, "all") == 0)
+        {
+            printf("All events and clients.\n");
+            for (int i = 0; i < 20; i++)
+            {
+                if (arrevents[i].event_name != NULL)
+                {
+                    printf("Evento %s\n", arrevents[i].event_name);
+                    if (arrevents[i].subs[0] != NULL)
+                    {
+                        for (int j = 1; j <= 20; i++)
+                        {
+                            printf("Sub %d: cliente con ID %ls", j, arrevents[i].subs[j]);
+                        }
+                    }
+                    else
+                    {
+                        printf("Este evento no tiene suscriptores \n");
+                    }
+                }
+                else
+                {
+                    printf("No hay más eventos\n");
+                    break;
+                }
+            }
+        }
+        if (strcmp(command, "save") == 0)
+        {
+            char *file_name = strtok(NULL, " ");
+            printf("Saving file: %s\n", file_name);
+        }
+        if (strcmp(command, "load") == 0)
+        {
+            char *file_name = strtok(NULL, " ");
+            printf("Loading file: %s\n", file_name);
+        }
     }
     close(server_sd);
     return 0;
-}
+    }
 
-//Método que retira el cliente que se desconectó de todos los eventos subscritos
-void removeEventsFromClient()
+    //Método que retira el cliente que se desconectó de todos los eventos subscritos
+    void removeEventsFromClient()
+    {
+        printf("Removing events from client");
+    }
+    void subscribeClient(int idClient, char event[30])
+    {
+        //buscar en arreglo de estructuras de eventos
+        /*for (int i = 0; i < sizeof(events); i++)
 {
-    printf("Removing events from client");
-}
+    if (events[i].event_name == event)
+    {
+            
+    }
+}*/
+        /*void initializeEvents()
+{
+    for (int i = 0; i < 20; i++)
+    {
+        
+    }
+}*/
+    }
