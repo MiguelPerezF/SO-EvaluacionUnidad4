@@ -250,10 +250,10 @@ void *serverCommandsThread(void *arg)
                 int controlprint = 0; //Controls the times tah confirmation prints
                 for (int i = pos; i < 20; i++)
                 {
-                    if (arrevents[i+1].event_name != NULL)
+                    if (arrevents[i + 1].event_name != NULL)
                     {
                         controlprint++;
-                        strcpy(arrevents[i].event_name, arrevents[i+1].event_name);
+                        strcpy(arrevents[i].event_name, arrevents[i + 1].event_name);
                         if (controlprint == 1)
                         {
                             printf("Evento %s eliminado con exito\n", event_name);
@@ -267,14 +267,13 @@ void *serverCommandsThread(void *arg)
                         {
                             printf("Evento %s eliminado con exito\n", event_name);
                         }
-                        break; 
+                        break;
                     }
                 }
             }
             if (rmvexist == 0) //If the event was not found
             {
                 printf("El evento %s no existe.\n", event_name);
-                
             }
         }
         if (strcmp(command, "trigger") == 0)
@@ -285,15 +284,27 @@ void *serverCommandsThread(void *arg)
         if (strcmp(command, "list") == 0)
         {
             char *event_name = strtok(NULL, " ");
-            for (int i = 0; i < 10; i++)
+            for (int i = 0; i < 20; i++)
             {
                 if (strcmp(arrevents[i].event_name, event_name) == 0)
                 {
                     printf("Listing clients in event %s:\n", arrevents->event_name);
-                    for (int i = 0; i < 100; i++)
+                    for (int j = 0; j < 20; i++) //iterates number of subs
                     {
-                        printf("Client: %ls", arrevents->subs[i]);
+                        if (arrevents[i].subs[0] != NULL)
+                        {
+                            printf("Sub: %ls\n", arrevents[i].subs[j]); //,arrevents->subs[i]
+                        }
+                        else
+                        {
+                            printf("El evento %s no tiene suscriptores.\n", event_name);
+                        }
                     }
+                    break;
+                }
+                else
+                {
+                    printf("El evento %s no existe\n", event_name);
                 }
             }
         }
@@ -335,38 +346,73 @@ void *serverCommandsThread(void *arg)
         if (strcmp(command, "save") == 0)
         {
             char *file_name = strtok(NULL, " ");
-            printf("Saving file: %s\n", file_name);
+            FILE *fout = fopen(file_name, "w+");
+            if (fout == NULL)
+            {
+                perror("Falla en la apertura del archivo de salida: ");
+                return (EXIT_FAILURE);
+            }
+            printf("Archivo abierto, guardando...\n");
+            for (int i = 0; i < 20; i++)
+            {
+                if (arrevents[i].event_name != NULL)
+                {
+                    printf("Escribiré %s\n", arrevents[i].event_name);
+                    fprintf(fout, "%s", arrevents[i].event_name);
+                    fprintf(fout, "\n");
+                }
+                else
+                {
+                    break;
+                }
+            }
+            //printf("Eventos guardados en el archivo con éxito\n");
         }
         if (strcmp(command, "load") == 0)
         {
             char *file_name = strtok(NULL, " ");
+            FILE *fin = fopen(file_name, "r");
+            if (fin == NULL)
+            {
+                perror("Falla en la apertura del archivo de entrada: ");
+                return (EXIT_FAILURE);
+            }
+            char buff[64];
+            char *status = NULL;
+
+            status = fgets(buff, sizeof(buff), fin);
+            if (status != NULL)
+            {
+                char *event = strtok(buff, ""); //strtok es para partir una cadena de caracteres en subcadenas indicando el separador
+                //agregar el evento
+            }
             printf("Loading file: %s\n", file_name);
         }
     }
     close(server_sd);
     return 0;
-    }
+}
 
-    //Método que retira el cliente que se desconectó de todos los eventos subscritos
-    void removeEventsFromClient()
-    {
-        printf("Removing events from client");
-    }
-    void subscribeClient(int idClient, char event[30])
-    {
-        //buscar en arreglo de estructuras de eventos
-        /*for (int i = 0; i < sizeof(events); i++)
+//Método que retira el cliente que se desconectó de todos los eventos subscritos
+void removeEventsFromClient()
+{
+    printf("Removing events from client");
+}
+void subscribeClient(int idClient, char event[30])
+{
+    //buscar en arreglo de estructuras de eventos
+    /*for (int i = 0; i < sizeof(events); i++)
 {
     if (events[i].event_name == event)
     {
             
     }
 }*/
-        /*void initializeEvents()
+    /*void initializeEvents()
 {
     for (int i = 0; i < 20; i++)
     {
         
     }
 }*/
-    }
+}
