@@ -21,13 +21,12 @@ struct client_t
 struct event_t
 {
     char *event_name;
-    int *subs[20];
+    int subs[20];
 };
 
 void *readThread(void *arg);
 void *serverCommandsThread(void *arg);
 void removeEventsFromClient();
-void subscribeClient();
 
 //static struct client_t *clients[10];
 
@@ -141,8 +140,13 @@ void *readThread(void *arg)
         if (strcmp(command, "sub") == 0)
         {
             char *event_name = strtok(NULL, " ");
-            subscribeClient(client.socket, event_name);
+            for (int i = 0; i < 20; i++)
+            {
+                //arrayev
+            }
+            
             printf("Subscribing client %d to the event: %s.\n", client.socket, event_name);
+
         }
         if (strcmp(command, "unsub") == 0)
         {
@@ -216,23 +220,16 @@ void *serverCommandsThread(void *arg)
         if (strcmp(command, "add") == 0)
         {
             char *event_name = strdup(strtok(NULL, " "));
-            struct event_t e;
-            e.event_name = event_name;
-            //printf("event name: %s", e.event_name);
-
+            struct event_t e =
+                {
+                    event_name,
+                    {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}};
+            //printf("Adding sub: %d.\n", e.subs[10]);
             for (int i = 0; i < 20; i++)
             {
                 if (arrevents[i].event_name == NULL)
                 {
                     arrevents[i] = e;
-                    int initEvents[20] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-                    *arrevents[i].subs = initEvents;
-                    /*for (int i = 0; i < 20; i++)
-                    {
-                        e.subs[i] = -1; 
-                    }*/
-
-                    printf("Adding event: %s.\n", event_name);
                     printf("Events[%d]: %s.\n", i, arrevents[i].event_name);
                     break;
                 }
@@ -274,7 +271,7 @@ void *serverCommandsThread(void *arg)
                     else //The last event added
                     {
                         arrevents[i].event_name = NULL;
-                        arrevents[i].subs[i] = NULL;
+                        arrevents[i].subs[i] = 0;
                         if (controlprint == 0)
                         {
                             printf("Evento %s eliminado con exito\n", event_name);
@@ -302,78 +299,68 @@ void *serverCommandsThread(void *arg)
             char *event_name = strtok(NULL, " ");
             for (int i = 0; i < 20; i++)
             {
-                if (strcmp(arrevents[i].event_name, event_name) == 0)
+                if (arrevents[i].event_name != NULL)
                 {
-                    if (arrevents[i].event_name != NULL)
+                    if (strcmp(arrevents[i].event_name, event_name) == 0)
                     {
-                        printf("Listing clients in event %s:\n", arrevents[i].event_name);
-                        for (int j = 0; j < 20; i++) //iterates number of subs
+                        printf("Listando clientes en el event %s:\n", arrevents[i].event_name);
+                        if (arrevents[i].subs[0] != 0)
                         {
-                            printf("Sub[%d]: %ls", j, arrevents[i].subs[j]); //
-                            printf("\n");
-
-                            if (arrevents[i].subs[0] == NULL)
+                            for (int j = 0; j < 20; j++) //iterates number of subs
                             {
-                                //printf("El evento %s no tiene suscriptores.\n", event_name);
-                                //break;
-                            }
-                            else
-                            {
-                                //printf("Sub: %ls", arrevents[i].subs[j]); //,arrevents->subs[i]
-                                //printf("\n");
+                                printf("Sub[%d]: %d", j,arrevents[i].subs[j]); //
+                                printf("\n");
+                                /*if (arrevents[i].subs[j] != 0)
+                                {
+                                    printf("Cliente %d subscrito.\n", arrevents[i].subs[j]);
+                                }*/
                             }
                         }
-                        break;
-                    }
-                    else
-                    {
-                        printf("evento no existe");
+                        else
+                        {
+                            printf("El evento %s no tiene subs aún\n", event_name);
+                            break;
+                        }
                     }
                 }
-                /*else
-                {
-                    printf("El evento %s no existe\n", event_name);
-                    break;
-                }*/
             }
         }
 
         if (strcmp(command, "show") == 0)
         {
-            for (int i = 0; i < 10; i++)
+            for (int i = 0; i < 20; i++)
             {
                 printf("Event %d: %s\n", i, arrevents[i].event_name);
             }
         }
-        if (strcmp(command, "load") == 0)
-            if (strcmp(command, "all") == 0)
+        if (strcmp(command, "all") == 0)
+        {
+            printf("Todos los eventos y clientes.\n");
+            for (int i = 0; i < 20; i++)
             {
-                printf("All events and clients.\n");
-                for (int i = 0; i < 20; i++)
+                if (arrevents[i].event_name != NULL)
                 {
-                    if (arrevents[i].event_name != NULL)
+                    printf("Evento %s\n", arrevents[i].event_name);
+                    if (arrevents[i].subs[0] != 0)
                     {
-                        printf("Evento %s\n", arrevents[i].event_name);
-                        if (arrevents[i].subs[0] != NULL)
+                        printf("justo antes de iterar en subs");
+                        for (int j = 1; j <= 20; i++)
                         {
-                            printf("justo antes de iterar en subs");
-                            for (int j = 1; j <= 20; i++)
-                            {
-                                printf("Sub %d: cliente con ID %ls", j, arrevents[i].subs[j]);
-                            }
-                        }
-                        else
-                        {
-                            printf("Este evento no tiene suscriptores \n");
+                            printf("Sub %d: cliente con ID %d", j, arrevents[i].subs[j]);
                         }
                     }
                     else
                     {
-                        printf("No hay más eventos\n");
-                        break;
+                        printf("Este evento no tiene suscriptores \n");
                     }
                 }
+                else
+                {
+                    printf("No hay más eventos\n");
+                    break;
+                }
             }
+        }
         if (strcmp(command, "save") == 0)
         {
             char *file_name = strtok(NULL, " ");
@@ -411,14 +398,23 @@ void *serverCommandsThread(void *arg)
             }
             char buff[64];
             char *status = NULL;
-
+            int cont = 0;
             status = fgets(buff, sizeof(buff), fin);
-            if (status != NULL)
+
+            while (status != NULL && cont<20)
             {
-                //char *event = strtok(buff, ""); //strtok es para partir una cadena de caracteres en subcadenas indicando el separador
-                //agregar el evento
+                printf("Evento %d leido: %s", cont, buff);
+                char *event = strdup(buff);
+                struct event_t e =
+                {
+                    event,
+                    {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+                };
+                status = fgets(buff, sizeof(buff), fin);
+                arrevents[cont] = e;
+                cont++;
             }
-            printf("Loading file: %s\n", file_name);
+            printf("Archivo %s leido\n", file_name);
         }
     }
     close(server_sd);
@@ -430,21 +426,4 @@ void removeEventsFromClient()
 {
     printf("Removing events from client");
 }
-void subscribeClient(int idClient, char event[30])
-{
-    //buscar en arreglo de estructuras de eventos
-    /*for (int i = 0; i < sizeof(events); i++)
-{
-    if (events[i].event_name == event)
-    {
-            
-    }
-}*/
-    /*void initializeEvents()
-{
-    for (int i = 0; i < 20; i++)
-    {
-        
-    }
-}*/
-}
+
