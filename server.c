@@ -5,7 +5,6 @@
 #include <stdlib.h>
 #include <pthread.h>
 #include <sys/socket.h>
-//#include <netinet/in.h>
 #include <arpa/inet.h>
 #include <signal.h>
 #include <string.h>
@@ -26,11 +25,9 @@ struct event_t
 
 void *readThread(void *arg);
 void *serverCommandsThread(void *arg);
-void removeEventsFromClient();
 
 //static struct client_t *clients[10];
 
-//ADÁPTAME PARA RECIBIR MÁS CLIENTES
 int main(int argc, char *argv[])
 {
     //char buf[BUF_SIZE];
@@ -140,11 +137,6 @@ void *readThread(void *arg)
         if (strcmp(command, "sub") == 0)
         {
             char *event_name = strtok(NULL, " ");
-            for (int i = 0; i < 20; i++)
-            {
-                //arrayev
-            }
-            
             printf("Subscribing client %d to the event: %s.\n", client.socket, event_name);
 
         }
@@ -176,12 +168,12 @@ void *readThread(void *arg)
     if (0 == numOfBytes)
     {
         printf("client closed the socket end\n");
-        removeEventsFromClient();
+        //removeEventsFromClient();
     }
     else if (-1 == numOfBytes)
     {
         perror("ReadThread read() fails: ");
-        removeEventsFromClient();
+        //removeEventsFromClient();
     }
 
     printf("Terminate Pthread for reading\n");
@@ -214,6 +206,7 @@ void *serverCommandsThread(void *arg)
         if ((strcmp(command, "exit")) == 0)
         {
             printf("Terminating server.\n");
+            exit(1);
         }
 
         //comando add
@@ -421,9 +414,4 @@ void *serverCommandsThread(void *arg)
     return 0;
 }
 
-//Método que retira el cliente que se desconectó de todos los eventos subscritos
-void removeEventsFromClient()
-{
-    printf("Removing events from client");
-}
 
